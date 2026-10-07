@@ -4,13 +4,51 @@ App web interno que prepara a **importação de tabelas de preço no Mercos** pa
 integram **Sankhya × Mercos** pelo connector da **Corpcloud**: o gerente publica a tabela do mês,
 cada assistente gera o arquivo da própria filial, e tudo fica registrado.
 
-Foi feito depois de um mês em que a importação manual (exportar do Mercos, fazer PROCV com a
-planilha do gerente, reimportar) deu errado de três jeitos ao mesmo tempo: os preços novos não
-entraram, o arquivo de uma filial importado na outra **criou produtos sem vínculo com o connector**
-(pedidos com "produto não integrado") e a reimportação regravou estoque e NCM errados. O app
-transforma o processo num fluxo guiado que **não deixa esses erros acontecerem**.
+O objetivo é tirar do TI uma tarefa repetitiva e arriscada: **o gerente e as assistentes passam a
+fazer a atualização de preços sozinhos**, com o app conferindo cada passo, e o TI só acompanha.
 
 ![Conferência de uma importação](docs/screenshots/importacao-conferencia.png)
+
+## O problema
+
+Na integração Sankhya × Mercos, produtos, estoque e pedidos passam pelo connector, mas **o preço
+não**: ele só entra no Mercos por importação de planilha. Toda mudança de tabela virava um trabalho
+manual do TI, repetido **para cada filial** (cada filial é uma conta separada no Mercos):
+
+1. receber a planilha do gerente e conferir se não há códigos repetidos com preços diferentes;
+2. exportar os produtos do Mercos daquela filial;
+3. cruzar as duas planilhas com PROCV, coluna por coluna (CIF, FOB, preço de tabela, preço mínimo);
+4. limpar a exportação: centenas de linhas **sem código**, cadastros **duplicados**, linhas **ocultas
+   por filtro**;
+5. importar no Mercos da filial certa e conferir o resultado;
+6. repetir tudo para a próxima filial.
+
+Além de tomar tempo, o processo tinha armadilhas que só aparecem quando já deu errado:
+
+| Armadilha | O que acontecia |
+|---|---|
+| PROCV arrastado só em parte | Os preços novos não entravam, sem nenhum aviso |
+| Arquivo de uma filial importado em outra | O Mercos **criava produtos sem vínculo com o connector**: estoque parado e pedidos com "produto não integrado" |
+| Linhas sem código na planilha | O Mercos criava cópias novas a cada importação (32 → 64 → 96 → 224) |
+| Código com dois cadastros no Mercos | A importação **apagava as cópias** (com fotos) e criava um cadastro novo, sem vínculo |
+| Colunas de estoque e NCM preenchidas | Estoque de uma filial gravado na outra; NCM apagado quando ia em branco |
+| Várias versões da tabela do gerente | Ninguém sabia qual tinha sido usada em cada filial |
+
+Um mês com vários desses erros ao mesmo tempo foi o que motivou o projeto.
+
+## O que o app agiliza
+
+| Antes | Com o app |
+|---|---|
+| O TI tratava as planilhas de **todas** as filiais a cada mudança de preço | O **gerente** publica a tabela e **cada assistente** importa a própria filial |
+| PROCV e limpeza manuais, filial por filial | O app cruza, limpa e gera o arquivo em segundos |
+| Erros descobertos dias depois, por pedidos que não integravam | O app **bloqueia** os erros conhecidos antes do arquivo existir |
+| Conferência "de olho" | Resumo do que vai mudar, variações acima de 5% em destaque e o número exato que o Mercos deve mostrar antes de confirmar |
+| "Quem mudou esse preço? Qual tabela foi usada?" | Log com quem publicou, quem importou, quando, de onde e com qual arquivo (SHA-256) |
+| O TI no meio de todo o processo | O TI acompanha pela tela inicial (filial atrasada, importação não confirmada) e só atua nas exceções |
+
+Na prática, a atualização de preços deixa de ser uma tarefa do TI e vira uma rotina do comercial,
+feita por quem conhece os preços e com as travas que antes dependiam da experiência de quem fazia.
 
 ## Funcionalidades
 
