@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block titulo %}Importação{% endblock %}
+{% block conteudo %}
+<h1>Importação de preços no Mercos</h1>
+
+{% if not filiais %}
+<p class="msg alerta">Nenhuma filial ativa cadastrada.{% if usuario.papel == 'admin' %} Cadastre em <a href="/admin/filiais">Filiais</a>.{% endif %}</p>
+{% elif usuario.papel == 'admin' %}
+<form method="get" action="/importacao" class="linha-form">
+  <label>Filial
+    <select id="escolha-filial" name="filial" onchange="this.form.submit()">
+      <option value="">escolha…</option>
+      {% for f in filiais %}<option value="{{ f.id }}" {% if filial and f.id == filial.id %}selected{% endif %}>{{ f.nome }}</option>{% endfor %}
+    </select>
+  </label>
+</form>
+{% endif %}
+
+{% if filial %}
+<section class="cartao">
+  <h2>{{ filial.nome }}</h2>
+  {% if vigente %}
+    <p>Tabela vigente: <strong>{{ vigente.regiao_nome }}</strong>, vigência <strong>{{ vigente.vigencia|data_br }}</strong>,
+       publicada por {{ vigente.usuario_nome }} em {{ vigente.publicado_em|data_br }} ({{ vigente.total_itens }} produtos).</p>
+    <ol class="passos">
+      <li>No Mercos <strong>desta filial</strong>, exporte os produtos (Produtos → Mais opções → Exportar). Não altere o arquivo.</li>
+      <li>Envie o arquivo aqui. O app limpa, aplica os preços e mostra tudo para conferência.</li>
+      <li>Baixe o arquivo gerado e importe <strong>no Mercos desta mesma filial</strong>.</li>
+      <li>Volte aqui e confirme a importação.</li>
+    </ol>
+    <form method="post" action="/importacao/enviar" enctype="multipart/form-data" class="linha-form">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <input type="hidden" name="filial_id" value="{{ filial.id }}">
+      <label>Exportação do Mercos (.xlsx) <input type="file" name="arquivo" accept=".xlsx" required></label>
+      <button>Enviar e conferir</button>
+    </form>
+  {% else %}
+    <p class="msg alerta">Ainda não há tabela publicada pelo gerente para a região {{ filial.regiao_nome }}.</p>
+  {% endif %}
+</section>
+
+<section class="cartao">
+  <h2>Importações recentes desta filial</h2>
+  <table>
+    <thead><tr><th>#</th><th>Criada em</th><th>Por</th><th>Vigência</th><th>Situação</th><th>Arquivo</th></tr></thead>
+    <tbody>{% for l in lotes %}
+      <tr><td><a href="/lotes/{{ l.id }}">{{ l.id }}</a></td><td>{{ l.criado_em|data_br }}</td><td>{{ l.usuario_nome }}</td>
+          <td>{{ l.vigencia|data_br }}</td><td>{{ STATUS_LOTE[l.status] }}</td>
+          <td>{% if l.arquivo_saida_id %}<a href="/arquivos/{{ l.arquivo_saida_id }}">⬇ baixar</a>{% endif %}</td></tr>
+    {% else %}<tr><td colspan="6"><em>Nenhuma ainda.</em></td></tr>{% endfor %}</tbody>
+  </table>
+</section>
+{% endif %}
+{% endblock %}

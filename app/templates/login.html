@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block titulo %}Entrar{% endblock %}
+{% block conteudo %}
+<section class="cartao estreito">
+  <h1>Entrar</h1>
+  <form method="post" action="/login">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label>Usuário <input name="login" autocomplete="username" required autofocus></label>
+    <label>Senha <input name="senha" type="password" autocomplete="current-password" required></label>
+    <button>Entrar</button>
+  </form>
+  <p class="nota">Acessos e ações neste sistema são registrados (usuário, data, hora, IP e navegador) para segurança e auditoria.</p>
+</section>
+{% endblock %}

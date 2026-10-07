@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+{% block titulo %}Importação #{{ lote.id }}{% endblock %}
+{% block conteudo %}
+<h1>Importação #{{ lote.id }} — {{ lote.filial_nome }}
+  <span class="etiqueta {{ 'verde' if lote.status == 'importado' else ('cinza' if lote.status == 'cancelado' else 'amarela') }}">{{ STATUS_LOTE[lote.status] }}</span></h1>
+
+{% if lote.status in ('gerado', 'importado') %}
+<section class="cartao baixar {{ 'pendente' if lote.status == 'gerado' }}">
+  {% if lote.status == 'gerado' %}
+    <h2>Próximo passo: importar no Mercos de {{ lote.filial_nome }}</h2>
+    <ol class="passos">
+      <li>Baixe o arquivo abaixo.</li>
+      <li>No Mercos <strong>de {{ lote.filial_nome }}</strong>: Produtos → Importar produtos → escolha o arquivo → opção <strong>"Atualizar produtos"</strong> (nunca "Substituir").</li>
+      <li><strong>Antes de confirmar</strong>, confira o resumo do passo 3 do Mercos. Tem que estar exatamente assim:
+        <strong>0 novos · {{ resumo.previa.linhas_saida }} atualizados · 0 substituirão outros · 0 excluídos</strong>.
+        Se qualquer número for diferente, clique em <strong>Cancelar importação</strong> no Mercos e avise o TI.</li>
+      <li>Volte aqui e confirme.</li>
+    </ol>
+  {% else %}
+    <h2>Arquivos desta importação</h2>
+  {% endif %}
+  <p><a class="botao grande" href="/arquivos/{{ arquivos.saida.id }}">⬇ Baixar arquivo para o Mercos</a>
+     <a class="botao secundario" href="/arquivos/{{ arquivos.relatorio.id }}">Relatório de conferência</a></p>
+  <p class="nota">{{ arquivos.saida.nome_original }}</p>
+  {% if lote.status == 'gerado' %}
+  <form method="post" action="/lotes/{{ lote.id }}/importado" class="confirmar">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label class="inline"><input type="checkbox" name="passo3" value="1" required> O resumo do passo 3 do Mercos mostrou exatamente
+      <strong>0 novos · {{ resumo.previa.linhas_saida }} atualizados · 0 substituirão outros · 0 excluídos</strong>.</label>
+    <label class="inline"><input type="checkbox" name="confirmo" value="1" required> Cliquei em <strong>"Confirmar importação"</strong> no Mercos de <strong>{{ lote.filial_nome }}</strong> e ela foi concluída.</label>
+    <p class="nota">Se cancelou a importação no Mercos, não marque nada aqui: use "Cancelar esta importação" no fim da página.</p>
+    <label>Observação (opcional) <input name="observacao" maxlength="500"></label>
+    <button>Confirmar importação</button>
+  </form>
+  {% endif %}
+</section>
+{% endif %}
+
+<section class="cartao">
+  <dl class="dados">
+    <dt>Responsável</dt><dd>{{ lote.usuario_nome }}</dd>
+    <dt>Tabela usada</dt><dd>{{ lote.regiao_codigo }}, vigência {{ lote.vigencia|data_br }}</dd>
+    <dt>Arquivo do Mercos</dt><dd>{% if arquivos.export %}<a href="/arquivos/{{ arquivos.export.id }}">{{ arquivos.export.nome_original }}</a>{% endif %}</dd>
+    <dt>Linha do tempo</dt><dd>enviado {{ lote.criado_em|data_br }}
+      {% if lote.gerado_em %} · gerado {{ lote.gerado_em|data_br }}{% endif %}
+      {% if lote.importado_em %} · importado {{ lote.importado_em|data_br }}{% endif %}
+      {% if lote.cancelado_em %} · cancelado {{ lote.cancelado_em|data_br }}{% endif %}</dd>
+    <dt>Catálogo exportado</dt><dd>{{ resumo.catalogo.total_linhas }} linhas: {{ resumo.catalogo.com_codigo }} com código,
+      <strong>{{ resumo.catalogo.sem_codigo }} sem código</strong>, {{ resumo.catalogo.duplicados }} cópias duplicadas,
+      {{ resumo.catalogo.ocultas }} linhas ocultas</dd>
+  </dl>
+</section>
+
+{% if resumo.conferencia_filial.suspeita %}
+<section class="cartao erro-borda">
+  <h2>Atenção: esta exportação parece ser de outra filial</h2>
+  <p>Os produtos deste arquivo se parecem mais com o catálogo de <strong>{{ resumo.conferencia_filial.parece }}</strong>
+     do que com o de {{ lote.filial_nome }}. Importar o arquivo de uma filial em outra cria produtos sem vínculo no Mercos.</p>
+</section>
+{% endif %}
+
+<section class="cartao">
+  <h2>Resultado</h2>
+  {% set p = resumo.final or {} %}
+  <div class="numeros">
+    <div><strong>{{ resumo.previa.linhas_saida }}</strong><span>produtos no arquivo de importação (só os que mudam)</span></div>
+    <div><strong>{{ resumo.previa.precos_alterados }}</strong><span>preços alterados pela tabela do gerente</span></div>
+    {% if resumo.previa.sem_alteracao is defined %}<div><strong>{{ resumo.previa.sem_alteracao }}</strong><span>sem alteração (não vão no arquivo)</span></div>{% endif %}
+    <div class="{{ 'quente' if resumo.previa.em_destaque }}"><strong>{{ resumo.previa.em_destaque }}</strong><span>variações acima de {{ destaque|numero }}%</span></div>
+    <div><strong>{{ resumo.previa.mantidos_fora_tabela }}</strong><span>fora da tabela (preço mantido)</span></div>
+    <div><strong>{{ resumo.previa.inativos }}</strong><span>vão como inativos (sem preço)</span></div>
+    <div class="{{ 'quente' if resumo.cadastrar }}"><strong>{{ resumo.cadastrar|length }}</strong><span>na tabela, mas não existem nesta filial</span></div>
+  </div>
+  <p class="nota">Só os preços mudam. O estoque vai <strong>em branco</strong> (o Mercos mantém o atual; quem atualiza é o connector) e o NCM segue como está.</p>
+</section>
+
+{% if lote.status == 'analisado' %}
+<form method="post" action="/lotes/{{ lote.id }}/gerar">
+<input type="hidden" name="csrf" value="{{ csrf }}">
+{% endif %}
+
+<section class="cartao">
+  <h2>Limpeza</h2>
+  {% if sem_codigo %}
+    <h3>Produtos sem código — não vão no arquivo ({{ sem_codigo|sum(attribute=1) }} linhas)</h3>
+    <table class="compacta">
+      <thead><tr><th>Produto</th><th>Cópias</th></tr></thead>
+      <tbody>{% for nome, qtd in sem_codigo %}<tr><td>{{ nome }}</td><td>{{ qtd }}</td></tr>{% endfor %}</tbody>
+    </table>
+    <p class="nota">Esses cadastros sem código existem no Mercos da filial e devem ser inativados lá (veja o relatório).</p>
+  {% endif %}
+
+  {% if duplicados %}
+    <h3>Códigos com mais de um cadastro no Mercos — ficam FORA do arquivo</h3>
+    <p class="msg alerta">Se esses códigos fossem no arquivo, o Mercos <strong>apagaria todas as cópias</strong> (com fotos)
+      e criaria um cadastro novo, <strong>sem vínculo com o connector</strong>. Para atualizar o preço deles:
+      inative no Mercos a cópia errada de cada código e depois gere uma nova importação.</p>
+    <table class="compacta">
+      <thead><tr><th>Código</th><th>Linha na exportação</th><th>Nome no Mercos</th></tr></thead>
+      <tbody>
+      {% for codigo, linhas in duplicados.items() %}
+        {% for d in linhas %}<tr><td>{{ codigo }}</td><td>{{ d.linha }}</td><td>{{ d.nome }}</td></tr>{% endfor %}
+      {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+
+  {% if not sem_codigo and not duplicados %}<p>Nada a limpar: o catálogo está sem duplicados e sem produtos sem código.</p>{% endif %}
+</section>
+
+{% if resumo.avisos %}
+<section class="cartao alerta-borda">
+  <h2>Avisos</h2>
+  <ul>{% for a in resumo.avisos %}<li>{{ a.mensagem }}</li>{% endfor %}</ul>
+</section>
+{% endif %}
+
+{% if resumo.cadastrar %}
+<section class="cartao alerta-borda">
+  <h2>Na tabela do gerente, mas não existem no Mercos desta filial ({{ resumo.cadastrar|length }})</h2>
+  <p>Esses produtos <strong>não</strong> entram no arquivo: produto novo nunca deve nascer pela planilha (fica sem vínculo com o Sankhya).
+     Se a filial precisa deles, cadastre/compartilhe pela integração (Sankhya → connector). Também podem estar inativos no Mercos.</p>
+  <table class="compacta">
+    <thead><tr><th>Código</th><th>Produto</th><th>Embalagem</th><th>CIF</th></tr></thead>
+    <tbody>{% for c in resumo.cadastrar %}<tr><td>{{ c.codigo }}</td><td>{{ c.nome }}</td><td>{{ c.embalagem }}</td><td>{{ c.cif|moeda }}</td></tr>{% endfor %}</tbody>
+  </table>
+</section>
+{% endif %}
+
+{% if lote.status == 'analisado' %}
+<section class="cartao acoes">
+  {% if resumo.conferencia_filial.suspeita %}
+    <label class="inline"><input type="checkbox" name="confirmo_filial" value="1"> Confirmo que este arquivo foi exportado do Mercos de <strong>{{ lote.filial_nome }}</strong>.</label>
+  {% endif %}
+  <button>Gerar arquivo de importação</button>
+</section>
+</form>
+{% endif %}
+
+{% if precos %}
+<section class="cartao">
+  <h2>Preços alterados</h2>
+  <table class="compacta">
+    <thead><tr><th>Código</th><th>Produto</th><th>CIF antes</th><th>CIF novo</th><th>Variação</th><th>FOB antes</th><th>FOB novo</th><th>Preço mínimo</th></tr></thead>
+    <tbody>{% for p in precos %}
+      <tr class="{{ 'destaque' if p.var_cif is not none and p.var_cif|abs >= destaque }}">
+        <td>{{ p.codigo }}</td><td>{{ p.nome }}</td><td>{{ p.cif_antes|moeda }}</td><td>{{ p.cif_depois|moeda }}</td>
+        <td>{{ p.var_cif|porcentagem }}</td><td>{{ p.fob_antes|moeda }}</td><td>{{ p.fob_depois|moeda }}</td><td>{{ p.min_depois|moeda }}</td></tr>
+    {% endfor %}</tbody>
+  </table>
+</section>
+{% endif %}
+
+{% if lote.status in ('analisado', 'gerado') %}
+<form method="post" action="/lotes/{{ lote.id }}/cancelar" class="linha-form">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <label>Motivo <input name="motivo" maxlength="300" placeholder="ex.: enviei o arquivo errado"></label>
+  <button class="secundario">Cancelar esta importação</button>
+</form>
+{% endif %}
+{% endblock %}

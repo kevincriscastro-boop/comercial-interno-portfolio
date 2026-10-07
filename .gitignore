@@ -1,0 +1,10 @@
+# Dados comerciais (banco, planilhas, backups) NUNCA vão para o Git
+dados/
+*.db
+*.xlsx
+*.xls
+.env
+__pycache__/
+.venv/
+venv/
+dados_backup*/

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block titulo %}Histórico de importações{% endblock %}
+{% block conteudo %}
+<h1>Histórico de importações</h1>
+<form method="get" action="/lotes" class="linha-form">
+  {% if usuario.papel == 'admin' %}
+  <label>Filial <select name="filial"><option value="">todas</option>
+    {% for f in filiais %}<option value="{{ f.id }}" {% if filtro_filial == f.id %}selected{% endif %}>{{ f.nome }}</option>{% endfor %}</select></label>
+  {% endif %}
+  <label>Situação <select name="status"><option value="">todas</option>
+    {% for k, v in STATUS_LOTE.items() %}<option value="{{ k }}" {% if filtro_status == k %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></label>
+  <button>Filtrar</button>
+</form>
+<section class="cartao">
+  <table>
+    <thead><tr><th>#</th><th>Filial</th><th>Por</th><th>Tabela</th><th>Enviado</th><th>Gerado</th><th>Importado</th><th>Situação</th><th>Arquivo</th></tr></thead>
+    <tbody>{% for l in lotes %}
+      <tr><td><a href="/lotes/{{ l.id }}">{{ l.id }}</a></td><td>{{ l.filial_nome }}</td><td>{{ l.usuario_nome }}</td>
+          <td>{{ l.regiao_codigo }} {{ l.vigencia|data_br }}</td><td>{{ l.criado_em|data_br }}</td>
+          <td>{{ l.gerado_em|data_br }}</td><td>{{ l.importado_em|data_br }}</td><td>{{ STATUS_LOTE[l.status] }}</td>
+          <td>{% if l.arquivo_saida_id %}<a href="/arquivos/{{ l.arquivo_saida_id }}">⬇ baixar</a>{% endif %}</td></tr>
+    {% else %}<tr><td colspan="9"><em>Nenhuma importação.</em></td></tr>{% endfor %}</tbody>
+  </table>
+</section>
+{% endblock %}

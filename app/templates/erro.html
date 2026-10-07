@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block titulo %}Erro{% endblock %}
+{% block conteudo %}
+<section class="cartao estreito">
+  <h1>{% if codigo == 403 %}Acesso negado{% elif codigo == 404 %}Não encontrado{% else %}Não foi possível continuar{% endif %}</h1>
+  <p>{{ erro }}</p>
+  <p><a href="/">Voltar ao início</a></p>
+</section>
+{% endblock %}

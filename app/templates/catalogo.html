@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block titulo %}Catálogos{% endblock %}
+{% block conteudo %}
+<h1>Saúde dos catálogos do Mercos</h1>
+<p>Cada exportação enviada vira uma "foto" do catálogo da filial. Se os números de <strong>sem código</strong> e
+   <strong>duplicados</strong> crescem, tem cadastro sendo criado fora do connector.</p>
+<section class="cartao">
+  <table>
+    <thead><tr><th>Quando</th><th>Filial</th><th>Enviado por</th><th>Linhas</th><th>Com código</th><th>Sem código</th><th>Cópias duplicadas</th><th>Ocultas</th><th>Importação</th></tr></thead>
+    <tbody>{% for f in fotos %}
+      <tr><td>{{ f.criado_em|data_br }}</td><td>{{ f.filial_nome }}</td><td>{{ f.usuario_nome or '—' }}</td><td>{{ f.total_linhas }}</td>
+          <td>{{ f.com_codigo }}</td><td class="{{ 'quente' if f.sem_codigo }}">{{ f.sem_codigo }}</td>
+          <td class="{{ 'quente' if f.duplicados }}">{{ f.duplicados }}</td><td>{{ f.ocultas }}</td>
+          <td>{% if f.lote_id %}<a href="/lotes/{{ f.lote_id }}">#{{ f.lote_id }}</a>{% endif %}</td></tr>
+    {% else %}<tr><td colspan="9"><em>Nenhuma exportação enviada ainda.</em></td></tr>{% endfor %}</tbody>
+  </table>
+</section>
+{% endblock %}

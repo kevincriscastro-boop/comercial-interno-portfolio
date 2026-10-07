@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block titulo %}Tabelas de preço{% endblock %}
+{% block conteudo %}
+<h1>Tabelas de preço</h1>
+
+{% if not regioes %}
+<section class="cartao alerta-borda">
+  <h2>Nenhuma região cadastrada</h2>
+  <p>Antes de enviar tabelas, o administrador precisa cadastrar as regiões em
+    {% if usuario.papel == 'admin' %}<a href="/admin/filiais">Filiais</a>{% else %}Filiais (peça ao TI){% endif %}.</p>
+</section>
+{% else %}
+<section class="cartao">
+  <h2>Enviar nova tabela</h2>
+  <form method="post" action="/tabelas/enviar" enctype="multipart/form-data" class="grade">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label>Região
+      <select id="tabela-regiao" name="regiao_id" required>
+        <option value="" selected disabled>escolha a região…</option>
+        {% for r in regioes %}<option value="{{ r.id }}">{{ r.codigo }} — {{ r.nome }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>Vigência (a partir de) <input type="date" name="vigencia" value="{{ hoje }}" required></label>
+    <label>Desconto máximo do vendedor (%) <input name="desconto_max" inputmode="decimal" placeholder="ex.: 10" required>
+      <span class="nota">Preço Mínimo no Mercos = CIF menos este desconto.</span></label>
+    <label class="largo">Observação <input name="observacao" maxlength="500" placeholder="ex.: reajuste das graxas"></label>
+    <label class="largo">Planilha (.xlsx) <input type="file" name="arquivo" accept=".xlsx,.xlsm" required></label>
+    <div class="largo"><button>Conferir tabela</button>
+      <span class="nota">A tabela fica em rascunho até você conferir e publicar.</span></div>
+  </form>
+</section>
+{% endif %}
+
+<section class="cartao">
+  <h2>Tabelas enviadas</h2>
+  <table>
+    <thead><tr><th>#</th><th>Região</th><th>Vigência</th><th>Itens</th><th>Desconto máx.</th><th>Enviada por</th><th>Enviada em</th><th>Situação</th></tr></thead>
+    <tbody>
+    {% for t in lista %}
+      <tr>
+        <td><a href="/tabelas/{{ t.id }}">{{ t.id }}</a></td>
+        <td>{{ t.regiao_codigo }}</td><td>{{ t.vigencia|data_br }}</td><td>{{ t.total_itens }}</td>
+        <td>{% if t.desconto_max is not none %}{{ t.desconto_max|numero }}%{% else %}—{% endif %}</td>
+        <td>{{ t.usuario_nome }}</td><td>{{ t.criado_em|data_br }}</td>
+        <td><span class="etiqueta {{ 'verde' if t.status == 'publicada' else ('amarela' if t.status == 'rascunho' else 'cinza') }}">{{ STATUS_TABELA[t.status] }}</span></td>
+      </tr>
+    {% else %}<tr><td colspan="8"><em>Nenhuma tabela enviada ainda.</em></td></tr>{% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

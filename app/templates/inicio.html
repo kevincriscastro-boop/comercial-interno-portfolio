@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block conteudo %}
+<h1>Olá, {{ usuario.nome }}</h1>
+
+{% if alertas %}
+<section class="cartao alerta-borda">
+  <h2>Pontos de atenção</h2>
+  <ul>{% for a in alertas %}<li>{{ a }}</li>{% endfor %}</ul>
+</section>
+{% endif %}
+
+{% if usuario.papel in ('gerente', 'admin') %}
+<section class="cartao">
+  <h2>Tabelas de preço</h2>
+  {% if rascunhos %}
+    <p class="msg alerta">Há tabela em rascunho aguardando publicação:
+      {% for r in rascunhos %}<a href="/tabelas/{{ r.id }}">{{ r.regiao }} — vigência {{ r.vigencia|data_br }}</a>{% if not loop.last %}, {% endif %}{% endfor %}</p>
+  {% endif %}
+  <p><a class="botao" href="/tabelas">Enviar ou ver tabelas</a></p>
+</section>
+{% endif %}
+
+{% if usuario.papel in ('assistente', 'admin') %}
+<section class="cartao">
+  <h2>Situação das filiais</h2>
+  <table>
+    <thead><tr><th>Filial</th><th>Tabela vigente</th><th>Última importação no Mercos</th><th>Situação</th><th></th></tr></thead>
+    <tbody>
+    {% for s in situacao %}
+      <tr>
+        <td>{{ s.filial.nome }}</td>
+        <td>{% if s.vigente %}{{ s.vigente.regiao_codigo }} · vigência {{ s.vigente.vigencia|data_br }}{% else %}<em>nenhuma publicada</em>{% endif %}</td>
+        <td>{% if s.ultimo %}{{ s.ultimo.importado_em|data_br }} por {{ s.ultimo.usuario_nome }}{% else %}—{% endif %}</td>
+        <td>{% if not s.vigente %}<span class="etiqueta cinza">aguardando gerente</span>
+            {% elif s.atualizada %}<span class="etiqueta verde">em dia</span>
+            {% else %}<span class="etiqueta amarela">falta importar</span>{% endif %}</td>
+        <td><a href="/importacao?filial={{ s.filial.id }}">abrir</a></td>
+      </tr>
+    {% else %}
+      <tr><td colspan="5"><em>{% if usuario.papel == 'admin' %}Nenhuma filial cadastrada. Comece em <a href="/admin/filiais">Filiais</a>.
+        {% else %}Seu usuário ainda não está ligado a uma filial ativa. Fale com o TI.{% endif %}</em></td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+{% endblock %}

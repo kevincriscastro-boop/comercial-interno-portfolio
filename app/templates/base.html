@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titulo %}Comercial Interno{% endblock %}{% if EMPRESA %} · {{ EMPRESA }}{% endif %}</title>
+  <link rel="stylesheet" href="/static/estilo.css">
+</head>
+<body>
+<header class="topo">
+  <a class="marca" href="/">Comercial Interno{% if EMPRESA %} <span>{{ EMPRESA }}</span>{% endif %}</a>
+  {% if usuario %}
+  <nav>
+    {% if usuario.papel in ('gerente', 'admin') %}<a href="/tabelas">Tabelas de preço</a>{% endif %}
+    {% if usuario.papel in ('assistente', 'admin') %}<a href="/importacao">Importação</a><a href="/lotes">Histórico de importações</a>{% endif %}
+    {% if usuario.papel == 'admin' %}
+      <a href="/admin/logs">Log</a><a href="/admin/catalogo">Catálogos</a><a href="/admin/filiais">Filiais</a><a href="/admin/usuarios">Usuários</a><a href="/admin/configuracoes">Configurações</a>
+    {% endif %}
+  </nav>
+  <div class="quem">
+    <span>{{ usuario.nome }}{% if usuario.filial_nome %} · {{ usuario.filial_nome }}{% endif %}</span>
+    <a href="/senha">Senha</a>
+    <form method="post" action="/logout"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="link">Sair</button></form>
+  </div>
+  {% endif %}
+</header>
+<main>
+  {% for tipo, texto in mensagens %}<div class="msg {{ tipo }}">{{ texto }}</div>{% endfor %}
+  {% block conteudo %}{% endblock %}
+</main>
+<footer>Acessos e ações neste sistema são registrados para auditoria.</footer>
+</body>
+</html>

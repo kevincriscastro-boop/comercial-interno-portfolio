@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block titulo %}Filiais e regiões{% endblock %}
+{% block conteudo %}
+<h1>Filiais e regiões</h1>
+
+<section class="cartao">
+  <h2>Regiões</h2>
+  <p class="nota">Região é o <strong>grupo de filiais que usa a mesma tabela de preço</strong> do gerente. O gerente
+    publica uma tabela por região, e ela vale para todas as filiais da região.<br>
+    Exemplo: região <strong>SP</strong> (tabela de São Paulo) com as filiais DC1 e FN2; região <strong>PR</strong>
+    (tabela do Paraná) com a filial FS3. Região <strong>não</strong> é filial: cada conta do Mercos é cadastrada lá embaixo, em Filiais.</p>
+  <table class="compacta">
+    <thead><tr><th>Código</th><th>Nome</th><th>Filiais</th><th>Tabelas</th><th></th></tr></thead>
+    <tbody>
+    {% for r in regioes %}
+      <tr>
+        <td colspan="2">
+          <form method="post" action="/admin/regioes/salvar" class="linha-form compacta" id="form-regiao-{{ r.id }}">
+            <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="regiao_id" value="{{ r.id }}">
+            <input id="regiao-codigo-{{ r.id }}" name="codigo" value="{{ r.codigo }}" size="8" required aria-label="Código da região">
+            <input id="regiao-nome-{{ r.id }}" name="nome" value="{{ r.nome }}" size="28" required aria-label="Nome da região">
+          </form>
+        </td>
+        <td>{{ r.qtd_filiais }}</td><td>{{ r.qtd_tabelas }}</td>
+        <td class="acoes-linha">
+          <button class="secundario" form="form-regiao-{{ r.id }}">salvar</button>
+          {% if not r.qtd_filiais and not r.qtd_tabelas %}
+          <form method="post" action="/admin/regioes/{{ r.id }}/excluir">
+            <input type="hidden" name="csrf" value="{{ csrf }}"><button class="link">excluir</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="5"><em>Nenhuma região ainda. Crie a primeira abaixo.</em></td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <h3>Nova região</h3>
+  <form method="post" action="/admin/regioes/salvar" class="linha-form">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label>Código <input id="nova-regiao-codigo" name="codigo" size="8" placeholder="ex.: SP" required></label>
+    <label>Nome <input id="nova-regiao-nome" name="nome" size="28" placeholder="ex.: São Paulo" required></label>
+    <button>Criar região</button>
+  </form>
+</section>
+
+<section class="cartao">
+  <h2>Filiais</h2>
+  <p class="nota">Cada filial é <strong>uma conta do Mercos</strong>: ela exporta e importa o próprio catálogo.
+    Dica: use como código o número da empresa no Sankhya (CODEMP). Filial com histórico ou assistente não é
+    excluída, só desativada.</p>
+  <table class="compacta">
+    <thead><tr><th>Código</th><th>Nome no Mercos</th><th>Região</th><th>Importações</th><th>Assistentes</th><th>Situação</th><th></th></tr></thead>
+    <tbody>
+    {% for f in lista %}
+      <tr class="{{ '' if f.ativo else 'apagado' }}">
+        <td colspan="3">
+          <form method="post" action="/admin/filiais/salvar" class="linha-form compacta" id="form-filial-{{ f.id }}">
+            <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="filial_id" value="{{ f.id }}">
+            <input id="filial-codigo-{{ f.id }}" name="codigo" value="{{ f.codigo }}" size="8" required aria-label="Código da filial">
+            <input id="filial-nome-{{ f.id }}" name="nome" value="{{ f.nome }}" size="34" required aria-label="Nome da filial">
+            <select id="filial-regiao-{{ f.id }}" name="regiao_id" aria-label="Região da filial">
+              {% for r in regioes %}<option value="{{ r.id }}" {% if r.id == f.regiao_id %}selected{% endif %}>{{ r.codigo }}</option>{% endfor %}
+            </select>
+          </form>
+        </td>
+        <td>{{ f.qtd_lotes }}</td><td>{{ f.qtd_usuarios }}</td>
+        <td>{{ 'ativa' if f.ativo else 'desativada' }}</td>
+        <td class="acoes-linha">
+          <button class="secundario" form="form-filial-{{ f.id }}">salvar</button>
+          <form method="post" action="/admin/filiais/{{ f.id }}/ativo">
+            <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="ativo" value="{{ '0' if f.ativo else '1' }}">
+            <button class="link">{{ 'desativar' if f.ativo else 'ativar' }}</button>
+          </form>
+          {% if not f.qtd_lotes and not f.qtd_usuarios %}
+          <form method="post" action="/admin/filiais/{{ f.id }}/excluir">
+            <input type="hidden" name="csrf" value="{{ csrf }}"><button class="link">excluir</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="7"><em>Nenhuma filial ainda.{% if regioes %} Crie a primeira abaixo.{% else %} Crie uma região primeiro.{% endif %}</em></td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% if regioes %}
+  <h3>Nova filial</h3>
+  <form method="post" action="/admin/filiais/salvar" class="linha-form">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label>Código <input id="nova-filial-codigo" name="codigo" size="8" placeholder="ex.: FN2" required></label>
+    <label>Nome (como aparece no Mercos) <input id="nova-filial-nome" name="nome" size="34" required></label>
+    <label>Região <select id="nova-filial-regiao" name="regiao_id" required>
+      <option value="" selected disabled>escolha…</option>
+      {% for r in regioes %}<option value="{{ r.id }}">{{ r.codigo }} — {{ r.nome }}</option>{% endfor %}</select></label>
+    <button>Criar filial</button>
+  </form>
+  {% endif %}
+  <p class="nota">Depois de criar a filial, vincule a assistente responsável em <a href="/admin/usuarios">Usuários</a>.</p>
+</section>
+{% endblock %}

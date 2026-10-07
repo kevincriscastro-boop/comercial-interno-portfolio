@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block titulo %}Usuários{% endblock %}
+{% block conteudo %}
+<h1>Usuários</h1>
+
+{% if senha_gerada %}
+<section class="cartao alerta-borda">
+  <h2>Senha temporária de {{ senha_gerada[0] }}</h2>
+  <p class="senha">{{ senha_gerada[1] }}</p>
+  <p>Passe para a pessoa por um canal seguro. Ela será obrigada a trocar no primeiro acesso. Esta senha não aparece de novo.</p>
+</section>
+{% endif %}
+
+<section class="cartao">
+  <h2>Novo usuário</h2>
+  <form method="post" action="/admin/usuarios/criar" class="grade">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label>Login <input name="login" required placeholder="ex.: maria"></label>
+    <label>Nome <input name="nome" required></label>
+    <label>Papel <select name="papel" required>{% for k, v in PAPEIS.items() %}<option value="{{ k }}">{{ v }}</option>{% endfor %}</select></label>
+    <label>Filial (só assistente) <select name="filial_id"><option value="">—</option>
+      {% for f in filiais %}<option value="{{ f.id }}">{{ f.nome }}</option>{% endfor %}</select></label>
+    <div class="largo"><button>Criar e gerar senha temporária</button></div>
+  </form>
+</section>
+
+<section class="cartao">
+  <table>
+    <thead><tr><th>Login</th><th>Nome</th><th>Papel / filial</th><th>Último login</th><th>Situação</th><th>Ações</th></tr></thead>
+    <tbody>{% for u in lista %}
+      <tr class="{{ '' if u.ativo else 'apagado' }}">
+        <td>{{ u.login }}</td><td>{{ u.nome }}</td>
+        <td>
+          <form method="post" action="/admin/usuarios/{{ u.id }}/alterar" class="linha-form compacta">
+            <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="acao" value="papel">
+            <select name="papel">{% for k, v in PAPEIS.items() %}<option value="{{ k }}" {% if u.papel == k %}selected{% endif %}>{{ v }}</option>{% endfor %}</select>
+            <select name="filial_id"><option value="">—</option>
+              {% for f in filiais %}<option value="{{ f.id }}" {% if u.filial_id == f.id %}selected{% endif %}>{{ f.codigo }}</option>{% endfor %}</select>
+            <button class="secundario">salvar</button>
+          </form>
+        </td>
+        <td>{{ u.ultimo_login|data_br }}</td>
+        <td>{{ 'ativo' if u.ativo else 'desativado' }}{% if u.trocar_senha %} · senha temporária{% endif %}</td>
+        <td class="acoes-linha">
+          {% for acao, rotulo in [('resetar_senha', 'nova senha'), ('desativar' if u.ativo else 'ativar', 'desativar' if u.ativo else 'ativar')] %}
+          <form method="post" action="/admin/usuarios/{{ u.id }}/alterar">
+            <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="acao" value="{{ acao }}">
+            <button class="link">{{ rotulo }}</button>
+          </form>
+          {% endfor %}
+        </td>
+      </tr>
+    {% endfor %}</tbody>
+  </table>
+</section>
+{% endblock %}

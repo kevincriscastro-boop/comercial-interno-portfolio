@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block titulo %}Log{% endblock %}
+{% block conteudo %}
+<h1>Log de auditoria</h1>
+<form method="get" action="/admin/logs" class="linha-form">
+  <label>Usuário <select name="usuario"><option value="">todos</option>
+    {% for l in logins %}<option {% if params.usuario == l %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></label>
+  <label>Tipo <select name="tipo"><option value="">todos (sem acessos)</option>
+    {% for t in ['acao', 'login', 'erro', 'sistema', 'acesso'] %}<option {% if params.tipo == t %}selected{% endif %}>{{ t }}</option>{% endfor %}</select></label>
+  <label>Ação contém <input name="acao" value="{{ params.acao or '' }}" size="14"></label>
+  <label>IP <input name="ip" value="{{ params.ip or '' }}" size="14"></label>
+  <label>De <input type="date" name="de" value="{{ params.de or '' }}"></label>
+  <label>Até <input type="date" name="ate" value="{{ params.ate or '' }}"></label>
+  <label class="inline"><input type="checkbox" name="falhas" value="1" {% if params.falhas %}checked{% endif %}> só falhas</label>
+  <label class="inline"><input type="checkbox" name="com_acessos" value="1" {% if params.com_acessos %}checked{% endif %}> incluir acessos de página</label>
+  <button>Filtrar</button>
+  <a class="botao secundario" href="/admin/logs.xlsx?{{ consulta }}">Exportar Excel</a>
+</form>
+<section class="cartao">
+  <p class="nota">Mostrando os {{ eventos|length }} eventos mais recentes (o Excel traz todos do filtro).</p>
+  <table class="compacta log">
+    <thead><tr><th>Quando</th><th>Usuário</th><th>IP</th><th>Tipo</th><th>Ação</th><th>Rota</th><th>Status</th><th>ms</th><th>Detalhes</th></tr></thead>
+    <tbody>{% for e in eventos %}
+      <tr class="{{ '' if e.sucesso else 'falha' }}">
+        <td>{{ e.quando|data_br }}</td><td>{{ e.login or '—' }}</td><td>{{ e.ip or '' }}</td><td>{{ e.tipo }}</td>
+        <td>{{ e.acao }}{% if e.lote_id %} <a href="/lotes/{{ e.lote_id }}">#{{ e.lote_id }}</a>{% endif %}</td>
+        <td class="rota">{{ e.metodo or '' }} {{ e.rota or '' }}</td><td>{{ e.status or '' }}</td><td>{{ e.duracao_ms or '' }}</td>
+        <td>{% if e.detalhes %}<details><summary>ver</summary><pre>{{ e.detalhes }}</pre>{% if e.navegador %}<pre>{{ e.navegador }}</pre>{% endif %}</details>{% endif %}</td>
+      </tr>
+    {% endfor %}</tbody>
+  </table>
+</section>
+{% endblock %}

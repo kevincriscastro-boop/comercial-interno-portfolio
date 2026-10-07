@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block titulo %}Tabela #{{ tabela.id }}{% endblock %}
+{% block conteudo %}
+<h1>Tabela #{{ tabela.id }} — {{ tabela.regiao_nome }}, vigência {{ tabela.vigencia|data_br }}
+  <span class="etiqueta {{ 'verde' if tabela.status == 'publicada' else ('amarela' if tabela.status == 'rascunho' else 'cinza') }}">{{ STATUS_TABELA[tabela.status] }}</span></h1>
+
+<section class="cartao {{ 'erro-borda' if not filiais_da_regiao else 'destino' }}">
+  <h2>Vale para: região {{ tabela.regiao_codigo }} — {{ tabela.regiao_nome }}</h2>
+  {% if filiais_da_regiao %}
+    <p>Ao publicar, estes preços passam a valer para <strong>{{ filiais_da_regiao|length }}
+       filia{{ 'l' if filiais_da_regiao|length == 1 else 'is' }}</strong>:</p>
+    <ul class="filiais-destino">{% for f in filiais_da_regiao %}<li><strong>{{ f.nome }}</strong> <span class="nota">(filial {{ f.codigo }})</span></li>{% endfor %}</ul>
+    <p class="nota">Se não for isso, descarte o rascunho e envie de novo escolhendo a região certa.</p>
+  {% else %}
+    <p><strong>Nenhuma filial ativa está nesta região.</strong> Publicada assim, a tabela não vale para ninguém.
+       Confira se escolheu a região certa ou peça ao TI para ligar as filiais à região.</p>
+  {% endif %}
+</section>
+
+<section class="cartao">
+  <dl class="dados">
+    <dt>Arquivo</dt><dd><a href="/arquivos/{{ tabela.arquivo_id }}">{{ tabela.nome_original }}</a> <span class="nota">SHA-256 {{ tabela.sha256[:16] }}…</span></dd>
+    <dt>Enviada por</dt><dd>{{ tabela.usuario_nome }} em {{ tabela.criado_em|data_br }}</dd>
+    {% if tabela.publicado_em %}<dt>Publicada em</dt><dd>{{ tabela.publicado_em|data_br }}</dd>{% endif %}
+    <dt>Produtos com preço</dt><dd>{{ tabela.total_itens }}</dd>
+    <dt>Desconto máximo</dt><dd>{% if tabela.desconto_max is not none %}<strong>{{ tabela.desconto_max|numero }}%</strong>
+      <span class="nota">— Preço Mínimo no Mercos = CIF − {{ tabela.desconto_max|numero }}%
+      (ex.: CIF R$ 100,00 → mínimo {{ (100 * (1 - tabela.desconto_max / 100))|moeda }})</span>{% else %}não informado
+      <span class="nota">— sem desconto, o Preço Mínimo usa o FOB da tabela</span>{% endif %}</dd>
+    {% if tabela.observacao %}<dt>Observação</dt><dd>{{ tabela.observacao }}</dd>{% endif %}
+    <dt>Leitura</dt><dd>aba "{{ resumo.aba }}", cabeçalho na linha {{ resumo.linha_cabecalho }}; código na coluna {{ resumo.colunas.codigo }}, CIF na {{ resumo.colunas.cif }}, FOB na {{ resumo.colunas.fob }}</dd>
+  </dl>
+  {% for aba in analise.abas %}
+    {% if aba.linhas_ocultas or aba.filtro or aba.colunas_ocultas %}
+    <p class="nota">Aba "{{ aba.nome }}": {{ aba.linhas_ocultas }} linhas ocultas{% if aba.colunas_ocultas %}, colunas ocultas {{ aba.colunas_ocultas|join(', ') }}{% endif %}{% if aba.filtro %}, filtro em {{ aba.filtro }}{% endif %}. O app lê todas as linhas, inclusive as ocultas.</p>
+    {% endif %}
+  {% endfor %}
+</section>
+
+{% if resumo.conflitos %}
+<section class="cartao erro-borda">
+  <h2>Corrigir antes de publicar: códigos repetidos com preços diferentes</h2>
+  <table>
+    <thead><tr><th>Código</th><th>Linhas</th><th>Nomes</th><th>Preços (CIF / FOB)</th></tr></thead>
+    <tbody>{% for c in resumo.conflitos %}
+      <tr><td>{{ c.codigo }}</td><td>{{ c.linhas|join(', ') }}</td><td>{{ c.nomes|join(' | ') }}</td>
+          <td>{% for p in c.precos %}{{ p[0]|moeda }} / {{ p[1]|moeda }}{% if not loop.last %}<br>{% endif %}{% endfor %}</td></tr>
+    {% endfor %}</tbody>
+  </table>
+  <p>O ideal é corrigir a planilha (uma linha por código) e enviar de novo. Se publicar assim mesmo,
+     <strong>esses códigos ficam fora da tabela</strong> e mantêm no Mercos o preço que já têm.</p>
+</section>
+{% endif %}
+
+{% if resumo.sem_preco %}
+<section class="cartao alerta-borda">
+  <h2>Produtos sem preço ({{ resumo.sem_preco|length }})</h2>
+  <p>Vão como <strong>inativos</strong> no Mercos se ficarem assim.</p>
+  <p class="nota">{% for s in resumo.sem_preco %}{{ s.codigo }} {{ s.nome }}{% if not loop.last %}; {% endif %}{% endfor %}</p>
+</section>
+{% endif %}
+
+<section class="cartao">
+  <h2>Comparação com a tabela anterior da região</h2>
+  {% if not resumo.tabela_anterior_id %}
+    <p>Primeira tabela desta região no sistema.</p>
+  {% else %}
+    <p>{{ resumo.variacoes|length }} preços mudaram ·
+       {{ resumo.novos|length }} produtos novos · {{ resumo.retirados|length }} produtos saíram da tabela.
+       Destaque para variação a partir de {{ destaque|numero }}%.</p>
+    {% if resumo.retirados %}<p class="nota">Saíram: {{ resumo.retirados|join(', ') }}</p>{% endif %}
+    {% if resumo.novos %}<p class="nota">Novos: {{ resumo.novos|join(', ') }}</p>{% endif %}
+    {% if resumo.variacoes %}
+    <table>
+      <thead><tr><th>Código</th><th>Produto</th><th>CIF antes</th><th>CIF novo</th><th>Variação</th><th>FOB antes</th><th>FOB novo</th></tr></thead>
+      <tbody>{% for v in resumo.variacoes %}
+        <tr class="{{ 'destaque' if v.var|abs >= destaque }}"><td>{{ v.codigo }}</td><td>{{ v.nome }}</td>
+          <td>{{ v.cif_antes|moeda }}</td><td>{{ v.cif|moeda }}</td><td>{{ v.var|porcentagem }}</td>
+          <td>{{ v.fob_antes|moeda }}</td><td>{{ v.fob|moeda }}</td></tr>
+      {% endfor %}</tbody>
+    </table>
+    {% endif %}
+  {% endif %}
+</section>
+
+{% if tabela.status == 'rascunho' %}
+<section class="cartao acoes">
+  <form method="post" action="/tabelas/{{ tabela.id }}/publicar">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    {% if resumo.conflitos %}
+      <label class="inline"><input type="checkbox" name="ignorar_conflitos" value="1" required>
+        Publicar mesmo assim, deixando de fora os {{ resumo.conflitos|length }} códigos em conflito.</label>
+    {% endif %}
+    <label class="inline"><input type="checkbox" name="confirmo_filiais" value="1" required>
+      Confirmo publicar para <strong>{{ tabela.regiao_codigo }} — {{ tabela.regiao_nome }}</strong>:
+      {% for f in filiais_da_regiao %}{{ f.nome }} ({{ f.codigo }}){% if not loop.last %}, {% endif %}{% else %}<strong>nenhuma filial</strong>{% endfor %}.</label>
+    <button>Publicar tabela</button>
+    <span class="nota">Ao publicar, ela substitui a tabela vigente de {{ tabela.regiao_codigo }} e libera as importações das filiais.</span>
+  </form>
+  <form method="post" action="/tabelas/{{ tabela.id }}/descartar">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <button class="secundario">Descartar rascunho</button>
+  </form>
+</section>
+{% endif %}
+{% endblock %}
