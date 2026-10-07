@@ -59,9 +59,24 @@ Comportamentos confirmados pelo suporte do Mercos e em testes:
 | "Quantidade em estoque" em branco | **Mantém** o estoque atual | Envia em branco |
 | "NCM" em branco | **Apaga** o NCM do cadastro | Mantém o NCM que veio |
 | Código que não existe na filial | **Cria** produto novo, sem vínculo | Nunca envia |
-| Código com 2+ cadastros (inclusive inativos) | **Apaga todas as cópias** (com fotos) e cria uma nova: aparece no passo 3 como "substituirão outros existentes" | Deixa fora e avisa |
+| Código com 2+ cadastros (**inclusive inativos**) | **Apaga todas as cópias** (com fotos) e cria uma nova: aparece no passo 3 como "substituirão outros existentes" | Deixa fora e avisa (os inativos não aparecem na exportação: a trava final é o passo 3) |
 | Linha sem código | Cria um produto novo a cada importação (as cópias se multiplicam) | Nunca envia |
 | Opção "Substituir" | Troca o catálogo inteiro pelo conteúdo da planilha | Instrução: nunca usar |
+
+### Duplicado no Mercos: desativar não basta
+
+A importação compara pelo **código** e considera também os produtos **inativos**, que nem aparecem na
+exportação (ela só traz os ativos). Se a cópia errada for apenas desativada, a próxima importação com
+aquele código **apaga as duas cópias** (inclusive a que tem vínculo) e cria uma nova, sem vínculo. É um
+ciclo que faz o "produto não integrado" voltar.
+
+Para resolver um duplicado:
+
+1. Descubra qual cópia tem vínculo: a criada pelo connector costuma ter o **NCM do Sankhya** e o
+   **estoque batendo com o disponível** do Sankhya; a criada por planilha tem estoque parado.
+2. Na cópia errada, **troque o código** (ex.: `10001` → `10001-ANTIGO`) **e** desative. Não exclua: os
+   pedidos antigos continuam ligados a ela.
+3. Na importação, confira o passo 3: **0 substituirão outros existentes**.
 
 O Mercos **não tem** modo "só atualizar o que existe" nem inativação em massa: produtos sem código e
 duplicados saem do catálogo manualmente.
