@@ -100,6 +100,16 @@ Qualquer número diferente: **Cancelar importação** e avisar o TI.
 5. **Corrija os pedidos que falharam**, depois do vínculo refeito: edite o pedido no Mercos, tire o
    produto sinalizado e coloque de novo; ou duplique o pedido e **cancele o original**.
 
+### Testar a correção com um pedido
+
+O pedido de teste precisa ser feito por um **vendedor real e ativo**. No connector, o usuário do TI no
+Mercos cai num vendedor de teste inativo no Sankhya, e o pedido para com
+`ORA-20101: Vendedor ... não está ativo` (gatilho `TRG_INC_TGFCAB`). Esse erro mostra que o pedido
+**passou pelo connector e chegou ao Sankhya**, o que é um bom sinal para o produto. Mas o gatilho barra
+o cabeçalho antes dos itens serem gravados, então ele não prova a integração do produto. A prova é o
+pedido de um vendedor real integrar. Na prática: refaça o pedido que falhou, do zero, com o produto
+adicionado pela busca (pedido **duplicado** continua apontando para a cópia antiga do produto).
+
 Já descartados como causa nesse tipo de erro: produto inativo, falta de estoque, configuração do
 produto no Sankhya (lote, local padrão) e a tabela de preço padrão da empresa (`TGFEMP.CODTAB`).
 
